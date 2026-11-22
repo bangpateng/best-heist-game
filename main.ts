@@ -5,7 +5,7 @@
 // grader, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
@@ -13,8 +13,18 @@ import { buildDossier } from './vendor/makefun-game.ts';
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
+// Fail loudly instead of shipping a half-empty dossier if the game is gone.
+if (!existsSync(join(here, 'game'))) {
+  throw new Error(`game/ directory missing next to ${import.meta.url}`);
+}
+
 mkdirSync(out, { recursive: true });
+// Clear any previous run's output first: cpSync merges into an existing
+// directory, so stale files from an older revision would otherwise survive
+// into the dossier and break byte-identical reproducibility on re-runs.
+rmSync(join(out, 'game'), { recursive: true, force: true });
 cpSync(join(here, 'game'), join(out, 'game'), { recursive: true });
+rmSync(join(out, 'screenshots'), { recursive: true, force: true });
 mkdirSync(join(out, 'screenshots'), { recursive: true });
 if (existsSync(join(here, 'screenshots'))) {
   cpSync(join(here, 'screenshots'), join(out, 'screenshots'), { recursive: true });
